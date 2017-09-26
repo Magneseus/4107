@@ -1,6 +1,5 @@
 #!/bin/python2.7
 
-import tensorflow as tf
 import numpy as np
 
 # Functions
