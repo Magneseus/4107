@@ -14,4 +14,5 @@ A2 = np.zeros((len(U), len(V)))
 for i in range(2):
 	A2 += S[i] * np.outer(U.T[i], V[i])
 
-print A2
+print(A2)
+print("Rank(A2): ",  np.ndim(A2))
