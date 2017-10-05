@@ -3,7 +3,6 @@
 import numpy as np
 
 # Functions
-
 def transpose(matrix):
   retMatrix = [[0. for i in range(len(matrix))] for j in range(matrix[0].size)]
   retMatrix = np.matrix(retMatrix)
@@ -22,12 +21,14 @@ def avgVec(vec):
   
   return sum / len(vec)
 
+
+
 # Starting vector and SVD
 a = np.matrix([[3,1,2,3],[4,3,4,3],[3,2,1,5],[1,6,5,2]])
 V,S,U = np.linalg.svd(a, full_matrices=True)
 
 # Take transpose of U?
-U = transpose(U)
+U = U.T
 
 # Create the new matrices (2x?)
 V2 = V[:,:2]
@@ -61,7 +62,7 @@ AliceAvg = avgVec(Alice)
 
 # U2(Alice) x S2 x V2T(EPL[3])
 
-Rui = AliceAvg + (U2[:1] * S2 * transpose(V2)[:,3:4])
+Rui = AliceAvg + (U2[:1] * S2 * V2.T[:,3:4])
 
 print("Rui: ", Rui)
 
