@@ -3,16 +3,6 @@
 import numpy as np
 
 # Functions
-def transpose(matrix):
-  retMatrix = [[0. for i in range(len(matrix))] for j in range(matrix[0].size)]
-  retMatrix = np.matrix(retMatrix)
-  
-  for i in range(len(matrix)):
-    for j in range(matrix[i].size):
-      retMatrix[j:j+1, i:i+1] = matrix[i:i+1, j:j+1]
-  
-  return retMatrix
-
 def avgVec(vec):
   sum = 0
   
