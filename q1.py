@@ -24,13 +24,9 @@ U = U.T
 V2 = V[:,:2]
 U2 = U[:,:2]
 
-S2 = []
+S2 = np.zeros((len(S),len(S)))
 
-for i in range(len(S)):
-  S2.append([])
-  for j in range(len(S)):
-    S2[i].append(0.)
-  
+for i in range(len(S)):  
   S2[i][i] = S[i]
 
 # Sigma2D && Inverse Sigma 2D
