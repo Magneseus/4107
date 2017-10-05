@@ -40,7 +40,7 @@ Alice = [5,3,4,4]
 
 Alice2D = Alice * U2 * S2I
 
-print("Alice2D: ", Alice2D)
+print("Alice2D: {0}".format(Alice2D))
 
 
 # Take avg
@@ -50,5 +50,5 @@ AliceAvg = avgVec(Alice)
 
 Rui = AliceAvg + (U2[:1] * S2 * V2.T[:,3:4])
 
-print("Rui: ", Rui)
+print("Rui: {0}".format(Rui))
 

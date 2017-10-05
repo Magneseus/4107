@@ -15,4 +15,9 @@ for i in range(2):
 	A2 += S[i] * np.outer(U.T[i], V[i])
 
 print(A2)
-print("Rank(A2): ",  np.ndim(A2))
+print("\nRank(A2): {0}".format(np.ndim(A2)))
+
+# Calc Frobenius norm of ||A-A2||
+fb_norm = np.linalg.norm(A-A2)
+
+print("\nFrobenius Norm (A-A2): {0}".format(fb_norm))
