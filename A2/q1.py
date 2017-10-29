@@ -51,7 +51,7 @@ def softmax(sums):
 
 
 class NeuralNet:
-	def __init__(self, input_dim, num_hidden_layer, hidden_dim, output_dim):
+	def __init__(self, input_dim=784, num_hidden_layer=2, hidden_dim=15, output_dim=10):
 		self.num_in  = input_dim
 		self.num_hl  = num_hidden_layer
 		self.num_hi  = hidden_dim
@@ -242,9 +242,10 @@ class NeuralNet:
 				# Output Bias
 				self.o_biases += eps_learn * np.sum(outputCorrections) * 1.0 # Or should this be -1?
 
-				# Hidden weights
-				for hInd in range(self.num_hl-1):
-					self.hh_weights[hInd] += eps_learn * self.hidden_nodes[hInd].T.dot(hiddenCorrections[hInd+1])
+				if self.num_hl > 1:
+					# Hidden weights
+					for hInd in range(self.num_hl-1):
+						self.hh_weights[hInd] += eps_learn * self.hidden_nodes[hInd].T.dot(hiddenCorrections[hInd+1])
 
 				# Hidden bias
 				for hInd in range(self.num_hl):
@@ -265,4 +266,4 @@ class NeuralNet:
 nn = NeuralNet(784, 3, 15, 10)
 nn.loadFromFile()
 #nn.run(mnist.data, mnist.target, 50, 0.01, 0.01)
-nn.kfold(mnist.data, mnist.target, 5)
+print(nn.kfold(mnist.data, mnist.target, 5))
