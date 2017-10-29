@@ -100,7 +100,7 @@ class NeuralNet:
 		for i in range(self.num_in):
 			self.input_nodes[i] = input_vals[i]
 
-		self.hidden_nodes[0] = sigmoid(input_vals.dot(self.ih_weights) + self.h_biases[0])
+		self.hidden_nodes[0] = sigmoid(self.input_nodes.dot(self.ih_weights) + self.h_biases[0])
 
 		for i in range(1, self.num_hl):
 			self.hidden_nodes[i] = sigmoid(self.hidden_nodes[i-1].dot(self.hh_weights[i-1]) + self.h_biases[i])
@@ -157,25 +157,14 @@ class NeuralNet:
 
 				### Correction calculations
 				# Output corrections (softmax)
-				for i in range(self.num_out):
-					outputCorrections[i] = ( (1 - self.output_nodes[i]) * self.output_nodes[i]) * ((targMat[ind])[i] - self.output_nodes[i])
+				outputCorrections = ( (1 - self.output_nodes) * self.output_nodes) * (targMat[ind] - self.output_nodes)
 
-				# Hidden corrections (sigmoid)
-				for hInd in reversed(range(self.num_hl)):
-					for i in range(self.num_hi):
-						# Sum up corrections
-						corSum = 0.0
+				# Hidden->Output corrections
+				hiddenCorrections[self.num_hl-1] = outputCorrections.dot(self.ho_weights.T) * ((1 - self.hidden_nodes[self.num_hl-1]) * self.hidden_nodes[self.num_hl-1])
 
-						# If we're the last hidden layer, adjust values to the output layer
-						last = hInd == self.num_hl-1
-						count = self.num_out if last else self.num_hi
-						for j in range(count):
-							if not last:
-								corSum += ((self.hh_weights[hInd])[i,j] * (hiddenCorrections[hInd+1])[j])
-							else:
-								corSum += (self.ho_weights[i,j] * outputCorrections[j])
-
-						(hiddenCorrections[hInd])[i] = (1 - (self.hidden_nodes[hInd])[i]) * (self.hidden_nodes[hInd])[i] * corSum
+				# Hidden Corrections
+				for hInd in reversed(range(self.num_hl-1)):
+					hiddenCorrections[hInd] = hiddenCorrections[hInd+1].dot(self.hh_weights[hInd].T) * ((1 - self.hidden_nodes[hInd]) * self.hidden_nodes[hInd])
 
 				### Weight Updates
 				# Output Weights
