@@ -146,20 +146,10 @@ class NeuralNet:
 		return resultCopy
 
 	def run(self, dataList, targetList, maxRuns, eps_learn, lam_decay):
-		# Weight gradient matrices
-		ho_gradients = np.zeros(shape=[self.num_hi, self.num_out], dtype=np.float32)
-		hh_gradients = [np.zeros(shape=[self.num_hi, self.num_hi], dtype=np.float32) for i in range(self.num_hl-1)]
-		ih_gradients = np.zeros(shape=[self.num_in, self.num_hi], dtype=np.float32)
+		# Correction Matrices
+		outputCorrections = np.zeros(shape=[self.num_out], dtype=np.float32)
+		hiddenCorrections = [np.zeros(shape=[self.num_hi], dtype=np.float32) for i in range(self.num_hl)]
 
-		# Bias gradient matrices
-		o_bias_gradients = np.zeros(shape=[self.num_out], dtype=np.float32)
-		h_bias_gradients = [np.zeros(shape=[self.num_hi], dtype=np.float32) for i in range(self.num_hl)]
-
-		# Node matrices
-		output_node_gradients = np.zeros(shape=[self.num_out], dtype=np.float32)
-		hidden_node_gradients = [np.zeros(shape=[self.num_hi], dtype=np.float32) for i in range(self.num_hl)]
-
-		
 		# Data matrices and indices
 		targMat = [np.zeros(shape=[self.num_out], dtype=np.float32) for i in range(len(targetList))]
 		for i in range(len(targetList)):
@@ -184,85 +174,58 @@ class NeuralNet:
 					print("doing training num: %d  (%s)" % (n, datetime.datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')))
 				n += 1
 
-				# Do the feed forward
+				#### Feed forward ####
 				self.feed_forward(dataList[ind])
 
+				#### Backpropagation ####
 
-				### Output gradients (softmax)
-				# Nodes
+				### Correction calculations
+				# Output corrections (softmax)
 				for i in range(self.num_out):
-					output_node_gradients[i] = ( (1 - self.output_nodes[i]) * self.output_nodes[i]) * ((targMat[ind])[i] - self.output_nodes[i])
+					outputCorrections[i] = ( (1 - self.output_nodes[i]) * self.output_nodes[i]) * ((targMat[ind])[i] - self.output_nodes[i])
 
-				# Weights
+				# Hidden corrections (sigmoid)
+				for hInd in reversed(range(self.num_hl)):
+					for i in range(self.num_hi):
+						# Sum up corrections
+						corSum = 0.0
+
+						# If we're the last hidden layer, adjust values to the output layer
+						last = hInd == self.num_hl-1
+						count = self.num_out if last else self.num_hi
+						for j in range(count):
+							if not last:
+								corSum += ((self.hh_weights[hInd])[i,j] * (hiddenCorrections[hInd+1])[j])
+							else:
+								corSum += (self.ho_weights[i,j] * outputCorrections[j])
+
+						(hiddenCorrections[hInd])[i] = (1 - (self.hidden_nodes[hInd])[i]) * (self.hidden_nodes[hInd])[i] * corSum
+
+				### Weight Updates
+				# Output Weights
 				for i in range(self.num_hi):
 					for j in range(self.num_out):
-						ho_gradients[i,j] = output_node_gradients[j] * (self.hidden_nodes[self.num_hl-1])[i]
+						self.ho_weights[i,j] += eps_learn * outputCorrections[j] * (self.hidden_nodes[self.num_hl-1])[i]
 
-				# Bias
+				# Output Bias
 				for i in range(self.num_out):
-					o_bias_gradients[i] = output_node_gradients[i] * 1.0 # Or should this be -1?
+					self.o_biases[i] += eps_learn * outputCorrections[i] * 1.0 # Or should this be -1?
 
-
-				### Hidden->Output gradients (sigmoid)
-				# Nodes
-				for i in range(self.num_hi):
-					# Sum gradients
-					g = 0.0
-					for j in range(self.num_out):
-						g += output_node_gradients[j] * self.ho_weights[i,j]
-
-					(hidden_node_gradients[self.num_hl-1])[i] = (self.hidden_nodes[self.num_hl-1])[i] * (1-(self.hidden_nodes[self.num_hl-1])[i]) * g
-
-				# Weights
-				for i in range(self.num_hi):
-					for j in range(self.num_hi):
-						(hh_gradients[self.num_hl-2])[i,j] #= (hidden_node_gradients[self.num_hl-1])[j] * (self.hidden_nodes[self.num_hl-2])[i]
-
-				# Bias
-				for i in range(self.num_hi):
-					(h_bias_gradients[self.num_hl-1])[i] = (hidden_node_gradients[self.num_hl-1])[i] * 1.0 # Or should this be -1?
-
-
-				### Hidden Gradients (sigmoid)
-				for hInd in reversed(range(1, self.num_hl-2)):
-					
-					# Nodes
-					for i in range(self.num_hi):
-						# Sum gradients
-						g = 0.0
-						for j in range(self.num_hi):
-							g += (hidden_node_gradients[hInd+1])[j] * (self.hh_weights[hInd])[i,j]
-
-						(hidden_node_gradients[hInd])[i] = (self.hidden_nodes[hInd])[i] * (1-(self.hidden_nodes[hInd])[i]) * g
-
-					# Weights
+				# Hidden weights
+				for hInd in range(self.num_hl-1):
 					for i in range(self.num_hi):
 						for j in range(self.num_hi):
-							(hh_gradients[hInd-1])[i,j] = (hidden_node_gradients[hInd])[j] * (self.hidden_nodes[hInd-1])[i]
+							(self.hh_weights[hInd])[i,j] += eps_learn * (self.hidden_nodes[hInd])[i] * (hiddenCorrections[hInd+1])[j]
 
-					# Bias
+				# Hidden bias
+				for hInd in range(self.num_hl-1):
 					for i in range(self.num_hi):
-						(h_bias_gradients[hInd])[i] = (hidden_node_gradients[hInd])[i] * 1.0 # Or should this be -1?
+						(self.h_biases[hInd]) += eps_learn * (hiddenCorrections[hInd])[i] * 1.0 # Or should this be -1?
 
-
-				### Hidden-Input Gradients (sigmoid)
-				# Nodes
-				for i in range(self.num_hi):
-					# Sum gradients
-					g = 0.0
-					for j in range(self.num_hi):
-						g += (hidden_node_gradients[1])[j] * (self.hh_weights[0])[i,j]
-
-					(hidden_node_gradients[0])[i] = (self.hidden_nodes[0])[i] * (1.0 - (self.hidden_nodes[0])[i]) * g
-
-				# Weights
+				# Input weights
 				for i in range(self.num_in):
 					for j in range(self.num_hi):
-						ih_gradients[i,j] = (hidden_node_gradients[0])[j] * self.input_nodes[i]
-
-				# Bias
-				for i in range(self.num_hi):
-					(h_bias_gradients[0])[i] = (hidden_node_gradients[0])[i] * 1.0 # Or should this be -1?
+						self.ih_weights[i,j] += eps_learn * self.input_nodes[i] * (hiddenCorrections[0])[j]
 
 			runs += 1
 
