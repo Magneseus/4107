@@ -83,6 +83,23 @@ class NeuralNet:
 		for i in range(self.num_out):
 			self.o_biases[i] = 0.02 * self.rand.random() - 0.01
 
+	def meanSquaredError(self, data, target):
+		sumSquaredError = 0.0
+
+		targMat = [np.zeros(shape=[self.num_out], dtype=np.float32) for i in range(len(target))]
+		for i in range(len(target)):
+			for j in range(self.num_out):
+				(targMat[i])[j] = 1.0 if target[i] == j else 0.0
+
+		for i in range(len(data)):
+			guesses = self.feed_forward(data[i])
+		
+			for j in range(self.num_out):
+				err = targMat[i][j] - guesses[j]
+				sumSquaredError += err * err
+			
+		return sumSquaredError / len(data)
+
 	def feed_forward(self, input_vals):
 		# tmp matrices to store values
 		hidden_sums = np.zeros(shape=[self.num_hi], dtype=np.float32)
@@ -170,12 +187,19 @@ class NeuralNet:
 			for ind2 in range(len(dataList)):
 				ind = indList[ind2]
 
-				if (n%1000 == 0):
+				if (n != 0 and n%10000 == 0):
+					print("doing training num: %d  (%s)   err: %.4f" % (n, datetime.datetime.fromtimestamp(time.time()).strftime('%H:%M:%S'), self.meanSquaredError(dataList, targetList)))
+				elif (n%1000 == 0):
 					print("doing training num: %d  (%s)" % (n, datetime.datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')))
 				n += 1
 
+				#print("Start ff: %d" % (time.time() * 1000))
+
 				#### Feed forward ####
 				self.feed_forward(dataList[ind])
+
+				#print("End   ff: %d" % (time.time() * 1000))
+				#print("Start bp: %d" % (time.time() * 1000))
 
 				#### Backpropagation ####
 
@@ -226,6 +250,8 @@ class NeuralNet:
 				for i in range(self.num_in):
 					for j in range(self.num_hi):
 						self.ih_weights[i,j] += eps_learn * self.input_nodes[i] * (hiddenCorrections[0])[j]
+
+				#print("End   bp: %d" % (time.time() * 1000))
 
 			runs += 1
 
