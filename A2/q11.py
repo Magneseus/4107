@@ -16,9 +16,23 @@ output_dim = 10 # (0-9)
 eps = 0.01 # Learning rate
 lam = 0.01 # Decay lambda
 
+np.seterr(over='raise')
+
 
 # Sigmoid activation function
 def sigmoid(x):
+	x = np.clip(x, -500, 500)
+	
+	'''
+	ret = 0
+
+	try:
+		ret = 1.0 / (1.0 + np.exp(-x))
+	except:
+		print(x)
+	
+	return ret
+	'''
 	return 1.0 / (1.0 + np.exp(-x))
 
 def sigmoid_deriv(x):
@@ -26,8 +40,10 @@ def sigmoid_deriv(x):
 
 # Softmax function
 def softmax(sums):
-	returnMat = np.zeros(shape=[len(sums), 1], dtype=np.float32)
+	returnMat = np.zeros(shape=[len(sums), 1], dtype=np.float64)
 	
+	sums -= np.argmax(sums)
+
 	# e^x / Sigma e^x
 	returnMat = np.exp(sums) / np.sum(np.exp(sums), keepdims=True)
 
@@ -44,18 +60,18 @@ class NeuralNet:
 		self.rand = random.Random(None)
 
 		# Define the matrices for the neuron outputs
-		self.input_nodes  = np.zeros(shape=[1, self.num_in], dtype=np.float32)
-		self.hidden_nodes = [np.zeros(shape=[1, self.num_hi], dtype=np.float32) for i in range(self.num_hl)]
-		self.output_nodes = np.zeros(shape=[1, self.num_out], dtype=np.float32)
+		self.input_nodes  = np.zeros(shape=[1, self.num_in], dtype=np.float64)
+		self.hidden_nodes = [np.zeros(shape=[1, self.num_hi], dtype=np.float64) for i in range(self.num_hl)]
+		self.output_nodes = np.zeros(shape=[1, self.num_out], dtype=np.float64)
 
 		# Define the matrices for the weights
-		self.ih_weights = np.zeros(shape=[self.num_in, self.num_hi], dtype=np.float32)
-		self.hh_weights = [np.zeros(shape=[self.num_hi, self.num_hi], dtype=np.float32) for i in range(self.num_hl-1)]
-		self.ho_weights = np.zeros(shape=[self.num_hi, self.num_out], dtype=np.float32)
+		self.ih_weights = np.zeros(shape=[self.num_in, self.num_hi], dtype=np.float64)
+		self.hh_weights = [np.zeros(shape=[self.num_hi, self.num_hi], dtype=np.float64) for i in range(self.num_hl-1)]
+		self.ho_weights = np.zeros(shape=[self.num_hi, self.num_out], dtype=np.float64)
 
 		# Define the matrices for the biases
-		self.h_biases = [np.zeros(shape=[1, self.num_hi], dtype=np.float32) for i in range(self.num_hl)]
-		self.o_biases = np.zeros(shape=[1, self.num_out], dtype=np.float32)
+		self.h_biases = [np.zeros(shape=[1, self.num_hi], dtype=np.float64) for i in range(self.num_hl)]
+		self.o_biases = np.zeros(shape=[1, self.num_out], dtype=np.float64)
 
 		# Initialize weights to random values
 		for i in range(self.num_in):
@@ -113,7 +129,7 @@ class NeuralNet:
 	def meanSquaredError(self, data, target):
 		sumSquaredError = 0.0
 
-		targMat = [np.zeros(shape=[1, self.num_out], dtype=np.float32) for i in range(len(target))]
+		targMat = [np.zeros(shape=[1, self.num_out], dtype=np.float64) for i in range(len(target))]
 		for i in range(len(target)):
 			for j in range(self.num_out):
 				(targMat[i])[0, j] = 1.0 if target[i] == j else 0.0
@@ -151,7 +167,7 @@ class NeuralNet:
 		self.output_nodes = softmax(self.hidden_nodes[self.num_hl-1].dot(self.ho_weights) + self.o_biases)
 
 		# return a copy of the results
-		resultCopy = np.zeros(shape=[1, self.num_out], dtype=np.float32)
+		resultCopy = np.zeros(shape=[1, self.num_out], dtype=np.float64)
 		for i in range(self.num_out):
 			resultCopy[0, i] = self.output_nodes[0, i]
 
@@ -159,11 +175,11 @@ class NeuralNet:
 
 	def run(self, dataList, targetList, maxRuns, eps_learn, lam_decay):
 		# Correction Matrices
-		outputCorrections = np.zeros(shape=[1, self.num_out], dtype=np.float32)
-		hiddenCorrections = [np.zeros(shape=[1, self.num_hi], dtype=np.float32) for i in range(self.num_hl)]
+		outputCorrections = np.zeros(shape=[1, self.num_out], dtype=np.float64)
+		hiddenCorrections = [np.zeros(shape=[1, self.num_hi], dtype=np.float64) for i in range(self.num_hl)]
 
 		# Data matrices and indices
-		targMat = [np.zeros(shape=[self.num_out], dtype=np.float32) for i in range(len(targetList))]
+		targMat = [np.zeros(shape=[self.num_out], dtype=np.float64) for i in range(len(targetList))]
 		for i in range(len(targetList)):
 			for j in range(self.num_out):
 				(targMat[i])[j] = 1.0 if targetList[i] == j else 0.0
@@ -208,9 +224,9 @@ class NeuralNet:
 					hiddenCorrections[hInd] = hiddenCorrections[hInd+1].dot(self.hh_weights[hInd].T) * ((1 - self.hidden_nodes[hInd]) * self.hidden_nodes[hInd])
 
 				### Regularization
-				doWeights = outputCorrections + (lam_decay * self.ho_weights)
-				dhWeights = [hiddenCorrections[i] + (lam_decay * self.hh_weights[i-1]) for i in range(1,self.num_hl)]
-				diWeights = hiddenCorrections[0] + (lam_decay * self.ih_weights)
+				#doWeights = outputCorrections - (lam_decay * self.ho_weights)
+				#dhWeights = [hiddenCorrections[i] - (lam_decay * self.hh_weights[i-1]) for i in range(1,self.num_hl)]
+				#diWeights = hiddenCorrections[0] - (lam_decay * self.ih_weights)
 
 				### Weight Updates
 				# Output Weights
@@ -237,10 +253,10 @@ class NeuralNet:
 			runs += 1
 
 
-			if (runs % 10 == 0):
-				print("finished run %d:   err: %.4f" % (runs, self.summedError(dataList, targetList)))
-			else:
-				print('finished run %d' %(runs))
+			#if (runs % 10 == 0):
+			print("finished run %d:   err: %.4f" % (runs, self.summedError(dataList, targetList)))
+			#else:
+				#print('finished run %d' %(runs))
 
 
 nn = NeuralNet(784, 2, 15, 10)
