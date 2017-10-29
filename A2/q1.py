@@ -263,5 +263,6 @@ class NeuralNet:
 
 
 nn = NeuralNet(784, 3, 15, 10)
-#nn.loadFromFile()
-nn.run(mnist.data, mnist.target, 50, 0.01, 0.01)
+nn.loadFromFile()
+#nn.run(mnist.data, mnist.target, 50, 0.01, 0.01)
+nn.kfold(mnist.data, mnist.target, 5)
