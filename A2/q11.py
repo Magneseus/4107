@@ -79,6 +79,37 @@ class NeuralNet:
 		for i in range(self.num_out):
 			self.o_biases[0, i] = 0.02 * self.rand.random() - 0.01
 
+	def saveToFile(self, fileName='arrays'):
+		dimensionDict = {}
+		dimensionDict['ni'] = self.num_in
+		dimensionDict['nl'] = self.num_hl
+		dimensionDict['nh'] = self.num_hi
+		dimensionDict['no'] = self.num_out
+
+		np.savez(fileName, inNodes=nn.input_nodes, outNodes=nn.output_nodes, hNodes=nn.hidden_nodes, ihWeights=nn.ih_weights, hhWeights=nn.hh_weights, hoWeights=nn.ho_weights, hBiases=nn.h_biases, oBiases=nn.o_biases, dimDict=dimensionDict)
+
+	def loadFromFile(self, fileName='arrays'):
+		loaded = np.load(fileName + '.npz')
+
+		self.input_nodes = loaded['inNodes']
+		self.output_nodes = loaded['outNodes']
+		self.hidden_nodes = loaded['hNodes']
+
+		self.ih_weights = loaded['ihWeights']
+		self.hh_weights = loaded['hhWeights']
+		self.ho_weights = loaded['hoWeights']
+
+		self.h_biases = loaded['hBiases']
+		self.o_biases = loaded['oBiases']
+
+		dimensionDict = loaded['dimDict'].item()
+		self.num_in  = dimensionDict['ni']
+		self.num_hl  = dimensionDict['nl']
+		self.num_hi  = dimensionDict['nh']
+		self.num_out = dimensionDict['no']
+
+
+
 	def meanSquaredError(self, data, target):
 		sumSquaredError = 0.0
 
@@ -95,6 +126,18 @@ class NeuralNet:
 				sumSquaredError += err * err
 			
 		return sumSquaredError / len(data)
+
+	def summedError(self, data, target):
+		sum = 0.0
+		for i in range(len(data)):
+			guesses = self.feed_forward(data[i])
+
+			guess = np.argmax(guesses)
+			if (guess != target[i]):
+				sum += 1.0
+
+		return sum / len(data)
+
 
 	def feed_forward(self, input_vals):
 		for i in range(self.num_in):
@@ -139,7 +182,7 @@ class NeuralNet:
 			for ind2 in range(len(dataList)):
 				ind = indList[ind2]
 
-				if (n%1000 == 0):
+				if (n%10000 == 0):
 					print("doing training num: %d  (%s)" % (n, datetime.datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')))
 				n += 1
 
@@ -164,6 +207,11 @@ class NeuralNet:
 				for hInd in reversed(range(self.num_hl-1)):
 					hiddenCorrections[hInd] = hiddenCorrections[hInd+1].dot(self.hh_weights[hInd].T) * ((1 - self.hidden_nodes[hInd]) * self.hidden_nodes[hInd])
 
+				### Regularization
+				doWeights = outputCorrections + (lam_decay * self.ho_weights)
+				dhWeights = [hiddenCorrections[i] + (lam_decay * self.hh_weights[i-1]) for i in range(1,self.num_hl)]
+				diWeights = hiddenCorrections[0] + (lam_decay * self.ih_weights)
+
 				### Weight Updates
 				# Output Weights
 				self.ho_weights += eps_learn * np.dot(self.hidden_nodes[self.num_hl-1].T, outputCorrections)
@@ -176,7 +224,7 @@ class NeuralNet:
 					self.hh_weights[hInd] += eps_learn * self.hidden_nodes[hInd].T.dot(hiddenCorrections[hInd+1])
 
 				# Hidden bias
-				for hInd in range(self.num_hl-1):
+				for hInd in range(self.num_hl):
 					self.h_biases[hInd] += eps_learn * np.sum(hiddenCorrections[hInd]) * 1.0 # Or should this be -1?
 
 				#import pdb; pdb.set_trace()
@@ -188,9 +236,13 @@ class NeuralNet:
 
 			runs += 1
 
-			if (runs % 1 == 0):
-				print("finished run %d:   err: %.4f" % (runs, self.meanSquaredError(dataList, targetList)))
+
+			if (runs % 10 == 0):
+				print("finished run %d:   err: %.4f" % (runs, self.summedError(dataList, targetList)))
+			else:
+				print('finished run %d' %(runs))
 
 
 nn = NeuralNet(784, 2, 15, 10)
-nn.run(mnist.data, mnist.target, 10, 0.01, 0.01)
+#nn.loadFromFile()
+nn.run(mnist.data, mnist.target, 50, 0.01, 0.01)
