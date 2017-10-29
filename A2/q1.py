@@ -154,6 +154,25 @@ class NeuralNet:
 
 		return sum / len(data)
 
+	def kfold(self, data, target, k):
+		indList = range(len(data))
+		self.rand.shuffle(indList)
+
+		data2 = [data[i] for i in indList]
+		target2 = [target[i] for i in indList]
+
+		len_of_fold = int(np.floor(len(data) / float(k)))
+		folds = [len_of_fold * i for i in range(k)]
+		folds.append(len(data))
+
+		errs = []
+
+		for i in range(k):
+			self.run(data2[0:folds[i]] + data2[folds[i+1]:len(data)], target2[0:folds[i]] + target2[folds[i+1]:len(data)], 1)
+
+			errs.append(self.summedError(data2[folds[i]:folds[i+1]], target2[folds[i]:folds[i+1]]))
+
+		return errs
 
 	def feed_forward(self, input_vals):
 		for i in range(self.num_in):
@@ -173,7 +192,7 @@ class NeuralNet:
 
 		return resultCopy
 
-	def run(self, dataList, targetList, maxRuns, eps_learn, lam_decay):
+	def run(self, dataList=mnist.data, targetList=mnist.target, maxRuns=10, eps_learn=0.01, lam_decay=0.01):
 		# Correction Matrices
 		outputCorrections = np.zeros(shape=[1, self.num_out], dtype=np.float64)
 		hiddenCorrections = [np.zeros(shape=[1, self.num_hi], dtype=np.float64) for i in range(self.num_hl)]
@@ -184,31 +203,19 @@ class NeuralNet:
 			for j in range(self.num_out):
 				(targMat[i])[j] = 1.0 if targetList[i] == j else 0.0
 
-		indList = range(len(dataList))
-
 		# Loop until maxRuns is hit
 		runs = 0
 		while runs < maxRuns:
-			# TODO: Change to a k-fold cross
-			self.rand.shuffle(indList)
-
 			n = 0
 
 			# Go through all training items
-			for ind2 in range(len(dataList)):
-				ind = indList[ind2]
-
+			for ind in range(len(dataList)):
 				if (n%10000 == 0):
 					print("doing training num: %d  (%s)" % (n, datetime.datetime.fromtimestamp(time.time()).strftime('%H:%M:%S')))
 				n += 1
 
-				#print("Start ff: %d" % (time.time() * 1000))
-
 				#### Feed forward ####
 				self.feed_forward(dataList[ind])
-
-				#print("End   ff: %d" % (time.time() * 1000))
-				#print("Start bp: %d" % (time.time() * 1000))
 
 				#### Backpropagation ####
 
@@ -243,22 +250,18 @@ class NeuralNet:
 				for hInd in range(self.num_hl):
 					self.h_biases[hInd] += eps_learn * np.sum(hiddenCorrections[hInd]) * 1.0 # Or should this be -1?
 
-				#import pdb; pdb.set_trace()
-
 				# Input weights
 				self.ih_weights += eps_learn * self.input_nodes.T.dot(hiddenCorrections[0])
-
-				#print("End   bp: %d" % (time.time() * 1000))
 
 			runs += 1
 
 
 			#if (runs % 10 == 0):
-			print("finished run %d:   err: %.4f" % (runs, self.summedError(dataList, targetList)))
+			#print("finished run %d:   err: %.4f" % (runs, self.summedError(dataList, targetList)))
 			#else:
-				#print('finished run %d' %(runs))
+			print('finished run %d' %(runs))
 
 
-nn = NeuralNet(784, 2, 15, 10)
+nn = NeuralNet(784, 3, 15, 10)
 #nn.loadFromFile()
 nn.run(mnist.data, mnist.target, 50, 0.01, 0.01)
