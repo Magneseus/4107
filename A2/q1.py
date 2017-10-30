@@ -22,17 +22,7 @@ np.seterr(over='raise')
 # Sigmoid activation function
 def sigmoid(x):
 	x = np.clip(x, -500, 500)
-	
-	'''
-	ret = 0
 
-	try:
-		ret = 1.0 / (1.0 + np.exp(-x))
-	except:
-		print(x)
-	
-	return ret
-	'''
 	return 1.0 / (1.0 + np.exp(-x))
 
 def sigmoid_deriv(x):
@@ -51,7 +41,7 @@ def softmax(sums):
 
 
 class NeuralNet:
-	def __init__(self, input_dim=784, num_hidden_layer=2, hidden_dim=15, output_dim=10):
+	def __init__(self, input_dim=784, num_hidden_layer=1, hidden_dim=40, output_dim=10):
 		self.num_in  = input_dim
 		self.num_hl  = num_hidden_layer
 		self.num_hi  = hidden_dim
@@ -143,6 +133,7 @@ class NeuralNet:
 			
 		return sumSquaredError / len(data)
 
+	# Sum (1 if incorrect output, 0 if correct)
 	def summedError(self, data, target):
 		sum = 0.0
 		for i in range(len(data)):
@@ -154,6 +145,8 @@ class NeuralNet:
 
 		return sum / len(data)
 
+	# Divide the data into k folds, and use all folds minus one as the training set, the remaining one as the test set
+	# Do this for each combination of folds
 	def kfold(self, data, target, k):
 		indList = range(len(data))
 		self.rand.shuffle(indList)
@@ -174,30 +167,37 @@ class NeuralNet:
 
 		return errs
 
+	# Feed the values forward through the network
 	def feed_forward(self, input_vals):
+		# Copy input values
 		for i in range(self.num_in):
 			self.input_nodes[0, i] = input_vals[i]
 
+		# Calculate the output of the first hidden layer, based on weights for input->hidden
 		self.hidden_nodes[0] = sigmoid(self.input_nodes.dot(self.ih_weights) + self.h_biases[0])
 
+		# Calculate outputs of all remaining hidden layers, using the weights between them
 		for i in range(1, self.num_hl):
 			self.hidden_nodes[i] = sigmoid(self.hidden_nodes[i-1].dot(self.hh_weights[i-1]) + self.h_biases[i])
 
+		# Calculate the output using a softmax function, to get confidence values on the possible outputs
 		self.output_nodes = softmax(self.hidden_nodes[self.num_hl-1].dot(self.ho_weights) + self.o_biases)
 
-		# return a copy of the results
+		# Return a copy of the results
 		resultCopy = np.zeros(shape=[1, self.num_out], dtype=np.float64)
 		for i in range(self.num_out):
 			resultCopy[0, i] = self.output_nodes[0, i]
 
 		return resultCopy
 
-	def run(self, dataList=mnist.data, targetList=mnist.target, maxRuns=10, eps_learn=0.01, lam_decay=0.01):
+	# A full run through of the neural network, feeding values forward and then performing backpropagation
+	def run(self, dataList=mnist.data, targetList=mnist.target, maxRuns=10, eps_learn=0.01, lam_decay=0.0001):
 		# Correction Matrices
 		outputCorrections = np.zeros(shape=[1, self.num_out], dtype=np.float64)
 		hiddenCorrections = [np.zeros(shape=[1, self.num_hi], dtype=np.float64) for i in range(self.num_hl)]
 
 		# Data matrices and indices
+		# Transform the desired output (a scalar) into a vector, where the index of the vector corresponding to the desired output has a 1, and all else are 0s
 		targMat = [np.zeros(shape=[self.num_out], dtype=np.float64) for i in range(len(targetList))]
 		for i in range(len(targetList)):
 			for j in range(self.num_out):
@@ -258,12 +258,11 @@ class NeuralNet:
 
 
 			#if (runs % 10 == 0):
-			#print("finished run %d:   err: %.4f" % (runs, self.summedError(dataList, targetList)))
+			print("finished run %d:   err: %.4f" % (runs, self.summedError(dataList, targetList)))
 			#else:
-			print('finished run %d' %(runs))
+			#print('finished run %d' %(runs))
 
 
-nn = NeuralNet(784, 3, 15, 10)
+nn = NeuralNet(784, 1, 40, 10)
 nn.loadFromFile()
-#nn.run(mnist.data, mnist.target, 50, 0.01, 0.01)
-print(nn.kfold(mnist.data, mnist.target, 5))
+print(nn.kfold(mnist.data, mnist.target, 10))
