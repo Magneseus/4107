@@ -11,26 +11,7 @@ mnist = fetch_mldata('MNIST original', data_home=DATA_DIR)
 # Initiate the random generator
 rnd = random.Random(3)
 
-##### TEMP STUFF REMOVE LATER ######
-
-x = np.zeros([5,6])
-
-x[0] = np.array([0., 0., 1., 0., 1., 0.])
-x[1] = np.array([1., 1., 1., 1., 0., 0.])
-x[2] = np.array([1., 0., 1., 1., 1., 0.])
-x[3] = np.array([0., 1., 0., 0., 0., 1.])
-x[4] = np.array([0., 1., 1., 0., 0., 0.])
-
-x2 = np.zeros([5,6])
-
-x2[0] = np.array([-1., -1.,  1., -1.,  1., -1.])
-x2[1] = np.array([ 1.,  1.,  1.,  1., -1., -1.])
-x2[2] = np.array([ 1., -1.,  1.,  1.,  1., -1.])
-x2[3] = np.array([-1.,  1., -1., -1., -1.,  1.])
-x2[4] = np.array([-1.,  1.,  1., -1., -1., -1.])
-
-##### END OF TEMP STUFF TO REMOVE LATER ######
-
+# Small helper function to take image data and binarize it
 def binarize(vals, thresh=1):
 	return np.array([(-1. if val < thresh else 1.) for val in vals])
 
@@ -40,9 +21,12 @@ mnist_train_5 = np.array([mnist.data[i] for i in range(60000) if mnist.target[i]
 mnist_test_1  = np.array([mnist.data[i] for i in range(60000, 70000) if mnist.target[i] == 1.0])
 mnist_test_5  = np.array([mnist.data[i] for i in range(60000, 70000) if mnist.target[i] == 5.0])
 
+# Number of images to feed to the neural network
+num_samples = 400
+
 # We can store 0.185 * 784 ~= 144 samples
 # Store 72 from each set, chosen randomly
-mnist_train_subset = np.array([(binarize(mnist_train_1[i//2]) if i % 2 == 0 else binarize(mnist_train_5[i//2])) for i in range(144)])
+mnist_train_subset = np.array([(binarize(mnist_train_1[i//2]) if i % 2 == 0 else binarize(mnist_train_5[i//2])) for i in range(num_samples)])
 rnd.shuffle(mnist_train_subset)
 
 # Creates the initial weights for a set of training examples
@@ -75,10 +59,6 @@ def weight_training_neg(matrix):
 
 	return y
 
-x = weight_training_zero(x)
-x2 = weight_training_neg(x2)
-y = np.array([-1.,1.,1.,1.,1.,-1.])
-
 def update(weights, vec, ind, neg=True):
 	altNum = -1. if neg else 0.
 	vector = np.copy(vec)
@@ -101,24 +81,27 @@ def hopfield(weights, vec, cap=-1):
 	old_vector = np.zeros(vector.size)
 	unchanged = True
 
-	indices = range(vector.size)
-	rnd.shuffle(indices)
+	#indices = range(vector.size)
+	#rnd.shuffle(indices)
+	sampled = 0
+	max_sampled = vector.size * 5
 
 	while (cap == -1 or iterations < cap):
 		old_vector = vector
 
 		# Pick a random neuron to update
-		index = indices[0]
-		indices = np.delete(indices, 0)
+		index = int(rnd.random() * (vector.size-1))#indices[0]
+		#indices = np.delete(indices, 0)
 
-		if indices.size == 0:
-			indices = range(vector.size)
-			rnd.shuffle(indices)
+		if sampled == max_sampled:#indices.size == 0:
+			#indices = range(vector.size)
+			#rnd.shuffle(indices)
 
 			if unchanged:
 				break
 
 			unchanged = True
+			sampled = 0
 
 		# Update using that index
 		vector = update(weights, vector, index)
@@ -127,6 +110,7 @@ def hopfield(weights, vec, cap=-1):
 			unchanged = False
 
 		iterations += 1
+		sampled += 1
 
 	print("iterations" + str(iterations))
 	return vector
@@ -143,3 +127,4 @@ def print_out_img(out_vec):
 		print(s)
 
 print_out_img(out)
+print_out_img(hopfield(w, binarize(mnist_test_1[1])))
