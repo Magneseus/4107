@@ -1,6 +1,4 @@
 import numpy as np
-import scipy as sp
-import tensorflow as tf
 import random
 from sklearn.datasets import fetch_mldata
 
@@ -9,7 +7,7 @@ DATA_DIR = "./"
 mnist = fetch_mldata('MNIST original', data_home=DATA_DIR)
 
 # Initiate the random generator
-rnd = random.Random(3)
+rnd = random.Random(10)
 
 # Small helper function to take image data and binarize it
 def binarize(vals, thresh=1):
@@ -18,16 +16,15 @@ def binarize(vals, thresh=1):
 # Separate the mnist data into two arrays
 mnist_train_1 = np.array([mnist.data[i] for i in range(60000) if mnist.target[i] == 1.0])
 mnist_train_5 = np.array([mnist.data[i] for i in range(60000) if mnist.target[i] == 5.0])
-mnist_test_1  = np.array([mnist.data[i] for i in range(60000, 70000) if mnist.target[i] == 1.0])
-mnist_test_5  = np.array([mnist.data[i] for i in range(60000, 70000) if mnist.target[i] == 5.0])
+mnist_test_1  = np.array([binarize(mnist.data[i]) for i in range(60000, 70000) if mnist.target[i] == 1.0])
+mnist_test_5  = np.array([binarize(mnist.data[i]) for i in range(60000, 70000) if mnist.target[i] == 5.0])
 
 # Number of images to feed to the neural network
-num_samples = 400
+num_samples = 6
 
-# We can store 0.185 * 784 ~= 144 samples
+# We can store maximum (0.185 * 784 ~= 144) samples
 # Store 72 from each set, chosen randomly
-mnist_train_subset = np.array([(binarize(mnist_train_1[i//2]) if i % 2 == 0 else binarize(mnist_train_5[i//2])) for i in range(num_samples)])
-rnd.shuffle(mnist_train_subset)
+mnist_train_subset = np.array([(binarize(mnist_train_1[rnd.randint(0,mnist_train_1.shape[0])]) if i % 2 == 1 else binarize(mnist_train_5[rnd.randint(0,mnist_train_5.shape[0])])) for i in range(num_samples)])
 
 # Creates the initial weights for a set of training examples
 # Needs to be in a binary 1,0 format (see matrix: x)
@@ -71,7 +68,7 @@ def update(weights, vec, ind, neg=True):
 	if sum >= 0.:
 		vector[ind] = 1.
 	else:
-		vector[ind] = altNum
+		vector[ind] = -1.
 
 	return vector
 
@@ -84,7 +81,7 @@ def hopfield(weights, vec, cap=-1):
 	#indices = range(vector.size)
 	#rnd.shuffle(indices)
 	sampled = 0
-	max_sampled = vector.size * 5
+	max_sampled = vector.size * 2
 
 	while (cap == -1 or iterations < cap):
 		old_vector = vector
@@ -112,19 +109,73 @@ def hopfield(weights, vec, cap=-1):
 		iterations += 1
 		sampled += 1
 
-	print("iterations" + str(iterations))
+	#print("iterations" + str(iterations))
 	return vector
 
+def get_smallest_distance(input_vector):
+	min_dist = np.finfo(np.float32).max
+	min_dist_num = -1
+
+	# Check 1's
+	for vec in mnist_test_1:
+		dist = np.linalg.norm(input_vector - vec)
+
+		if dist < min_dist:
+			min_dist = dist
+			min_dist_num = 1
+
+	# Check 5's
+	for vec in mnist_test_5:
+		dist = np.linalg.norm(input_vector - vec)
+
+		if dist < min_dist:
+			min_dist = dist
+			min_dist_num = 5
+
+	return min_dist_num
+
+# Train the network
 w = weight_training_neg(mnist_train_subset)
-out = hopfield(w, binarize(mnist_test_5[1]))
+
+# Test the network
+num_correct = 0
+max_correct = len(mnist_test_1) + len(mnist_test_5)
+
+# Test 5's
+def test_5(num_correct=num_correct, max_correct=max_correct):
+	for i in range(len(mnist_test_5)):
+		# Get the output of a vector
+		out_vec = hopfield(w, mnist_test_5[i])
+
+		# Check what it's classified as
+		if get_smallest_distance(out_vec) == 5:
+			num_correct += 1
+
+		print('{0}/{1}  ({2})'.format(i+1, max_correct, num_correct))
+
+# Test 1's
+def test_1(num_correct=num_correct, max_correct=max_correct):
+	for i in range(len(mnist_test_1)):
+		# Get the output of a vector
+		out_vec = hopfield(w, mnist_test_1[i])
+
+		# Check what it's classified as
+		if get_smallest_distance(out_vec) == 1:
+			num_correct += 1
+
+		print('{0}/{1}  ({2})'.format(i+1, max_correct, num_correct))
+
+def percent(max):
+	print('Percentage correct: {0}%'.format(num_correct/float(max)))
+
 
 def print_out_img(out_vec):
 	for i in range(28):
 		s = ""
 		for j in range(28):
-			s += '0' if out_vec[(i*28)+j] == -1 else '1'
+			s += ' ' if out_vec[(i*28)+j] == -1 else '1'
 			s += " "
 		print(s)
 
-print_out_img(out)
-print_out_img(hopfield(w, binarize(mnist_test_1[1])))
+#print_out_img(out)
+#print_out_img(hopfield(w, binarize(mnist_test_1[1])))
