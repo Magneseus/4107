@@ -197,5 +197,6 @@ def print_out_img(out_vec):
 			s += " "
 		print(s)
 
-#print_out_img(out)
-#print_out_img(hopfield(w, binarize(mnist_test_1[1])))
+# Tests for Hopfield Storkey network on a 1 input and 5 input
+print_out_img(hopfield(w, mnist_test_1[10]))
+print_out_img(hopfield(w, mnist_test_5[10]))
