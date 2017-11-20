@@ -199,4 +199,10 @@ def print_out_img(out_vec):
 
 # Tests for Hopfield Storkey network on a 1 input and 5 input
 print_out_img(hopfield(w, mnist_test_1[10]))
-print_out_img(hopfield(w, mnist_test_5[10]))
+print_out_img(hopfield(w, mnist_test_5[1]))
+
+# Tests on all 5 inputs
+#test_5()
+
+# Tests on all 1 inputs
+#test_1()
