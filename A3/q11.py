@@ -69,14 +69,10 @@ def storkey_training_single(vec, old_weights=None):
     if type(old_weights) == type(None):
         old_weights = np.zeros(len(vec))
 
-    hebbian_term  = np.outer(vec,vec) - np.identity(len(vec))
+    in_vec = np.outer(vec,vec) - np.identity(len(vec))
+    weighted = np.outer(vec, old_weights.dot(vec))
 
-    net_inputs    = old_weights.dot(vec)
-
-    pre_synaptic  = np.outer(vec,net_inputs)
-    post_synaptic = pre_synaptic.T
-
-    new_weights = old_weights + (1./len(vec))*(hebbian_term - pre_synaptic - post_synaptic)
+    new_weights = old_weights + (1./len(vec))*(in_vec - weighted - weighted.T)
 
     return new_weights
 
