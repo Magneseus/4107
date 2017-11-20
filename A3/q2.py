@@ -1,6 +1,8 @@
 import numpy as np
 import random
 from sklearn.datasets import fetch_mldata
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
 
 # Get the MNIST data, if not already there
 DATA_DIR = "./"
@@ -148,3 +150,30 @@ dmap = som_avg_dist(centsom)
 
 # Need at least 3 centroids, 5 seems best
 #cents = kmeans(x,3)
+
+# Plot the SOM
+normalizedSOM = som_avg_dist(centsom)
+plt.imshow(centsom)
+plt.colorbar()
+plt.show()
+'''
+# http://scikit-learn.org/stable/auto_examples/cluster/plot_dbscan.html
+# labels = TODO: find the right way to get this
+colors = [plt.cm.Spectral(each) for each in np.linspace(0, 1, len(labels))]
+for k, col in zip(labels, colors):
+	if k == -1:
+		# Using black for outliers
+		col = [0, 0, 0, 1]
+
+class_member_mask = (labels == k)
+core_samples_mask = np.zeros_like(labels, dtype=bool)
+X = StandardScaler().fit_transform(normalizedSOM)
+xy = X[class_member_mask & core_samples_mask]
+plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col), markeredgecolor='k', markersize=14)
+
+xy = X[class_member_mask & ~core_samples_mask]
+plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col), markeredgecolor='k', markersize=6)
+
+plt.title('Here comes an attempt')
+plt.show()
+'''
