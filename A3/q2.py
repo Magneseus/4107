@@ -106,6 +106,29 @@ def som(rdata, num_weights=10, ilam=0.001, iradius=8, num_iter=2000):
 
 	return weights
 
+def som_avg_dist(som):
+	avg_dist = np.zeros(shape=(som.shape[0], som.shape[1]))
+
+	for x in range(som.shape[0]):
+		for y in range(som.shape[1]):
+			w = som[x][y]
+
+			dist = 0.0
+			num = 0
+			# Calculate avg dist to neighbours
+			for r in range(-1,2):
+				for r2 in range(-1,2):
+					x2 = x + r
+					y2 = y + r2
+					if (x2 >= 0 and x2 < som.shape[0] and y2 >= 0 and y2 < som.shape[1]):
+						dist += np.linalg.norm(w - som[x2][y2])
+						num += 1
+
+			avg_dist[x][y] = dist / float(num)
+
+	# Normalize distances
+	return avg_dist / avg_dist.max()
+
 def prt(out_vec, floor=0):
 	for i in range(28):
 		s = ""
@@ -116,11 +139,12 @@ def prt(out_vec, floor=0):
 
 
 centsom = som(x)
+dmap = som_avg_dist(centsom)
 
-for i in range(10):
-	for j in range(10):
-		prt(centsom[i][j], 50)
+#for i in range(10):
+#	for j in range(10):
+#		prt(centsom[i][j], 50)
 
 
 # Need at least 3 centroids, 5 seems best
-cents = kmeans(x,3)
+#cents = kmeans(x,3)
