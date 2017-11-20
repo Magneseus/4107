@@ -2,14 +2,16 @@ import numpy as np
 import random
 from sklearn.datasets import fetch_mldata
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
+import scikitplot as skplt
 
 # Get the MNIST data, if not already there
 DATA_DIR = "./"
 mnist = fetch_mldata('MNIST original', data_home=DATA_DIR)
 
 # Initiate the random generator
-rnd = random.Random(3)
+rnd = random.Random()
 
 # Separate the mnist data into two arrays
 mnist_train_1 = np.array([mnist.data[i] for i in range(60000) if mnist.target[i] == 1.0])
@@ -66,19 +68,19 @@ def dec_lam(lam, it, num_iter):
 	return lam * np.exp(-it / float(num_iter))
 
 # 2D SOM
-def som(rdata, num_weights=10, ilam=0.001, iradius=8, num_iter=2000):
+def som(rdata, num_weights=50, ilam=0.005, iradius=30, num_iter=5000):
 	# Initialize weights
 	weights = som_init_weights(num_weights)
 
 	# Normalize data
-	#data = rdata / rdata.max()
-	data = rdata
+	data = rdata.astype(np.float32) / rdata.max()
+	#data = rdata
 
 	for i in range(num_iter):
 		# Decrease the learning rate & radius
 		lam = dec_lam(ilam, i, num_iter)
 		radius = dec_rad(iradius, i, num_iter/np.log(iradius))
-		print('Lambda: {0}   Radius: {1}'.format(lam, radius))
+		if i%10 == 0: print('Lambda: {0}   Radius: {1}'.format(lam, radius))
 
 		# pick a random vector
 		vec = data[rnd.randint(0,data.shape[0]-1)]
@@ -108,6 +110,7 @@ def som(rdata, num_weights=10, ilam=0.001, iradius=8, num_iter=2000):
 
 	return weights
 
+# Generate a map of the average distance between weights in the SOM
 def som_avg_dist(som):
 	avg_dist = np.zeros(shape=(som.shape[0], som.shape[1]))
 
@@ -131,6 +134,7 @@ def som_avg_dist(som):
 	# Normalize distances
 	return avg_dist / avg_dist.max()
 
+# Print out a digit
 def prt(out_vec, floor=0):
 	for i in range(28):
 		s = ""
@@ -139,41 +143,59 @@ def prt(out_vec, floor=0):
 			s += " "
 		print(s)
 
+# Classify a digit
+def get_smallest_distance(input_vector):
+	min_dist = np.finfo(np.float32).max
+	min_dist_num = -1
 
-centsom = som(x)
-dmap = som_avg_dist(centsom)
+	# Check 1's
+	for vec in mnist_test_1:
+		dist = np.linalg.norm(input_vector - vec)
 
-#for i in range(10):
-#	for j in range(10):
-#		prt(centsom[i][j], 50)
+		if dist < min_dist:
+			min_dist = dist
+			min_dist_num = 1
+
+	# Check 5's
+	for vec in mnist_test_5:
+		dist = np.linalg.norm(input_vector - vec)
+
+		if dist < min_dist:
+			min_dist = dist
+			min_dist_num = 5
+
+	return min_dist_num
 
 
-# Need at least 3 centroids, 5 seems best
-#cents = kmeans(x,3)
 
-# Plot the SOM
-normalizedSOM = som_avg_dist(centsom)
-plt.imshow(centsom)
+
+################ Self-Organizing Map #####################
+centroids_som = som(x)
+
+# Plot the distance avg of the SOM
+'''
+normalizedSOM = som_avg_dist(centroids_som)
+plt.imshow(normalizedSOM)
 plt.colorbar()
 plt.show()
 '''
-# http://scikit-learn.org/stable/auto_examples/cluster/plot_dbscan.html
-# labels = TODO: find the right way to get this
-colors = [plt.cm.Spectral(each) for each in np.linspace(0, 1, len(labels))]
-for k, col in zip(labels, colors):
-	if k == -1:
-		# Using black for outliers
-		col = [0, 0, 0, 1]
 
-class_member_mask = (labels == k)
-core_samples_mask = np.zeros_like(labels, dtype=bool)
-X = StandardScaler().fit_transform(normalizedSOM)
-xy = X[class_member_mask & core_samples_mask]
-plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col), markeredgecolor='k', markersize=14)
+################ K-Means Clustering #####################
+# Need at least 3 centroids, 5 seems best
+num_centroids = 5
+cents = kmeans(x, num_centroids)
 
-xy = X[class_member_mask & ~core_samples_mask]
-plt.plot(xy[:, 0], xy[:, 1], 'o', markerfacecolor=tuple(col), markeredgecolor='k', markersize=6)
+# Classifying the clusters
+'''
+y = [0 for i in range(num_centroids)]
+for i in range(num_centroids):
+	y[i] = get_smallest_distance(cents[i])
+'''
 
-plt.title('Here comes an attempt')
+# Plotting the dimension-reduced data
+'''
+pca = PCA(random_state=1)
+pca.fit(cents)
+skplt.decomposition.plot_pca_2d_projection(pca, cents, y)
 plt.show()
 '''
