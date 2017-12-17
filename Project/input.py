@@ -1,5 +1,6 @@
 import os
 import tensorflow as tf
+import numpy as np
 
 def add_tuple_to_lists(lists, dir, files):
 	labels = lists[0]
@@ -29,6 +30,7 @@ def _parse_function(filename, label):
 
 def get_dataset(lfw_dir):
 	labels, data = get_labels_and_files(lfw_dir)
+	size = len(labels)
 
 	tf_labels = tf.constant(labels)
 	tf_data   = tf.constant(data)
@@ -36,4 +38,20 @@ def get_dataset(lfw_dir):
 	dataset = tf.data.Dataset.from_tensor_slices((tf_data, tf_labels))
 	dataset = dataset.map(_parse_function)
 
-	return dataset
+	return dataset, size
+
+def split_dataset(dataset, size, split_point=0.5, shuffle=True):
+	split_marker = np.floor(size * split_point)
+
+	_data_1 = dataset.take(split_marker)
+	_data_2 = dataset.skip(split_marker)
+
+	if shuffle:
+		_data_1.shuffle(split_marker)
+		_data_2.shuffle(size - split_marker)
+
+	return (_data_1, split_marker), (_data_2, size - split_marker)
+
+def get_data():
+	dataset, size = get_dataset('./lfw')
+	return split_dataset(dataset, size, split_point=0.9)
