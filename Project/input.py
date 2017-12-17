@@ -37,5 +37,3 @@ def get_dataset(lfw_dir):
 	dataset = dataset.map(_parse_function)
 
 	return dataset
-
-dataset = get_dataset('./lfw')
