@@ -1,6 +1,7 @@
 import os
 import tensorflow as tf
 import numpy as np
+from keras.utils import np_utils
 
 def add_tuple_to_lists(lists, dir, files):
 	labels = lists[0]
@@ -32,13 +33,9 @@ def get_labels_and_files(lfw_dir):
 		labels[i] = dct[lbl]
 		label_lookup[labels[i]] = lbl
 
-	labels2 = []
-	for x in labels:
-		labels2.append([0 if x != i else 1 for i in range(len(label_lookup))])
+	labels = np_utils.to_categorical(labels, len(label_lookup))
 
-	print("test")
-
-	return labels2, data, label_lookup
+	return labels, data, label_lookup
 
 # https://www.tensorflow.org/programmers_guide/datasets#decoding_image_data_and_resizing_it
 #

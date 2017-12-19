@@ -16,7 +16,7 @@ parser.add_argument('--data_dir', type=str, default='./lfw',
 parser.add_argument('--num_epochs', type=int, default=1,
 					help='Number of training epochs between testing.')
 
-parser.add_argument('--num_runs', type=int, default=5,
+parser.add_argument('--num_runs', type=int, default=10,
 					help='Number of train/test cycles.')
 
 FLAGS = parser.parse_args()
@@ -24,16 +24,6 @@ FLAGS = parser.parse_args()
 
 # Get LFW dataset
 ((train_data, train_size), (test_data, test_size)), label_lookup = get_data(FLAGS.data_dir)
-
-train_data = train_data.batch(FLAGS.batch_size)
-test_data = test_data.batch(FLAGS.batch_size)
-
-# Define the iterator for the datasets
-train_it = train_data.make_initializable_iterator()
-train_next = train_it.get_next()
-
-test_it = test_data.make_initializable_iterator()
-test_next = test_it.get_next()
 
 # PARAMETERS
 NUM_LABELS = len(label_lookup)
@@ -54,8 +44,8 @@ def get_bias(name, shape, initializer_):
 		dtype=tf.float32)
 
 # Define the network model
-def model(input):
-	input_layer = tf.reshape(input, [-1, 64, 64, 3])
+def model(features, labels, mode):
+	input_layer = tf.reshape(features, [-1, 64, 64, 3])
 
 	with tf.variable_scope('conv1') as scope:
 		weights = get_weight(
@@ -130,19 +120,45 @@ def model(input):
 
 		output = tf.add(tf.matmul(fc, weights), biases, name=scope.name)
 
-	return output
+	predictions = {
+		"classes": tf.argmax(input=output, axis=1),
+		"probabilities": tf.nn.softmax(output, name="softmax_tensor")
+	}
 
-X = tf.placeholder("float", [None, SIZE_INPUT, SIZE_INPUT, 3])
-Y = tf.placeholder("float", [None, NUM_LABELS])
+	if mode == tf.estimator.ModeKeys.PREDICT:
+		return tf.estimator.EstimatorSpec(mode=mode, predictions=predictions)
 
-output = model(X)
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=Y))
-train_op = tf.train.RMSPropOptimizer(0.001, 0.9).minimize(cost)
-predict_op = tf.argmax(output, 1)
+	# Calculate loss
+	loss = tf.losses.softmax_cross_entropy(onehot_labels=labels, logits=output)
+
+	# Configure the Training Op (for TRAIN mode)
+ 	if mode == tf.estimator.ModeKeys.TRAIN:
+		optimizer = tf.train.GradientDescentOptimizer(learning_rate=0.001)
+		train_op = optimizer.minimize(
+			loss=loss,
+			global_step=tf.train.get_global_step())
+		return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
+
+	# Add evaluation metrics (for EVAL mode)
+	eval_metric_ops = {
+		"accuracy": tf.metrics.accuracy(
+		labels=labels, predictions=predictions["classes"])
+	}
+  	
+  	return tf.estimator.EstimatorSpec(mode=mode, loss=loss, eval_metric_ops=eval_metric_ops)
+
+#X = tf.placeholder("float", [None, SIZE_INPUT, SIZE_INPUT, 3])
+#Y = tf.placeholder("float", [None, NUM_LABELS])
+
+#output = model(X)
+#cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=output, labels=Y))
+#train_op = tf.train.RMSPropOptimizer(0.001, 0.9).minimize(cost)
+#predict_op = tf.argmax(output, 1)
 
 # Add ops to save and restore all the variables.
-saver = tf.train.Saver()
+#saver = tf.train.Saver()
 
+"""
 with tf.Session() as sess:
 	# Initialize variables
 	tf.global_variables_initializer().run()
@@ -180,3 +196,46 @@ with tf.Session() as sess:
 		# End of one test/train cycle
 
 	# End of entire run cycle
+"""
+
+def train_input_fn():
+	# Get LFW dataset
+	((train_data, train_size), (test_data, test_size)), label_lookup = get_data(FLAGS.data_dir)
+
+	train_data = train_data.batch(FLAGS.batch_size)
+
+	# Define the iterator for the datasets
+	train_it = train_data.make_one_shot_iterator()
+	train_d, train_l = train_it.get_next()
+
+	return train_d, train_l
+
+def test_input_fn():
+	# Get LFW dataset
+	((train_data, train_size), (test_data, test_size)), label_lookup = get_data(FLAGS.data_dir)
+
+	test_data = test_data.batch(FLAGS.batch_size)
+
+	test_it = test_data.make_one_shot_iterator()
+	test_d, test_l = test_it.get_next()
+
+	return test_d, test_l
+
+def main(argv):
+	lfw_classifier = tf.estimator.Estimator(model_fn=model, model_dir="./checkpoints")
+
+	# Log the values in the "Softmax" tensor with label "probabilities"
+	tensors_to_log = {"probabilities": "softmax_tensor"}
+	logging_hook = tf.train.LoggingTensorHook(
+		tensors=tensors_to_log, every_n_iter=1000)
+
+	lfw_classifier.train(
+		input_fn=train_input_fn,
+		steps=FLAGS.num_runs,
+		hooks=[logging_hook])
+
+	eval_res = lfw_classifier.evaluate(input_fn=test_input_fn)
+	print(eval_res)
+
+if __name__ == "__main__":
+	tf.app.run()
