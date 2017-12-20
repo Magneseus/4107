@@ -154,7 +154,7 @@ with tf.Session() as sess:
 	# Restore checkpoint
 	if FLAGS.global_step != 0:
 		print("Restoring model")
-		saver.restore(sess, "./checkpoints/model_lfw-{}".format(FLAGS.global_step))
+		saver.restore(sess, "./checkpoints/lfw/model_lfw-{}".format(FLAGS.global_step))
 
 
 	print("Start training")
@@ -199,47 +199,3 @@ with tf.Session() as sess:
 		# End of one test/train cycle
 
 	# End of entire run cycle
-"""
-
-def train_input_fn():
-	# Get LFW dataset
-	((train_data, train_size), (test_data, test_size)), label_lookup = get_data(FLAGS.data_dir)
-
-	train_data = train_data.batch(FLAGS.batch_size)
-
-	# Define the iterator for the datasets
-	train_it = train_data.make_one_shot_iterator()
-	train_d, train_l = train_it.get_next()
-
-	return train_d, train_l
-
-def test_input_fn():
-	# Get LFW dataset
-	((train_data, train_size), (test_data, test_size)), label_lookup = get_data(FLAGS.data_dir)
-
-	test_data = test_data.batch(FLAGS.batch_size)
-
-	test_it = test_data.make_one_shot_iterator()
-	test_d, test_l = test_it.get_next()
-
-	return test_d, test_l
-
-def main(argv):
-	lfw_classifier = tf.estimator.Estimator(model_fn=model, model_dir="./checkpoints")
-
-	# Log the values in the "Softmax" tensor with label "probabilities"
-	tensors_to_log = {}#"probabilities": "softmax_tensor"}
-	logging_hook = tf.train.LoggingTensorHook(
-		tensors=tensors_to_log, every_n_iter=1000)
-
-	lfw_classifier.train(
-		input_fn=train_input_fn,
-		steps=FLAGS.num_runs,
-		hooks=[logging_hook])
-
-	eval_res = lfw_classifier.evaluate(input_fn=test_input_fn)
-	print(eval_res)
-
-if __name__ == "__main__":
-	tf.app.run()
-"""
