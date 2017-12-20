@@ -18,6 +18,9 @@ parser.add_argument('--data_dir', type=str, default='./faces',
 parser.add_argument('--num_epochs', type=int, default=100,
 					help='Number of training epochs between testing.')
 
+parser.add_argument('--global_step', type=int, default=0,
+					help='Current step to start at. (If non-zero, will attempt to load a checkpoint)')
+
 FLAGS = parser.parse_args()
 
 # Get face dataset
@@ -149,12 +152,17 @@ with tf.Session() as sess:
 	# Initialize variables
 	tf.global_variables_initializer().run()
 
+	# Restore checkpoint
+	if FLAGS.global_step != 0:
+		print("Restoring model")
+		saver.restore(sess, "./checkpoints/fd/model_fd-{}".format(FLAGS.global_step))
+
 	print("Start training")
 
-	for epoch in range(FLAGS.num_epochs):
+	for epoch in range(FLAGS.global_step+1, FLAGS.global_step + 1 + FLAGS.num_epochs):
 		sess.run(train_op, feed_dict={X: train_data, Y: train_labels})
 
-		save_path = saver.save(sess, './checkpoints/model', global_step=epoch)
+		save_path = saver.save(sess, './checkpoints/model_fd', global_step=epoch)
 		print("Saved checkpoint: %s" % save_path)
 
 		print(epoch, np.mean(np.argmax(test_labels, axis=1) ==
@@ -163,41 +171,3 @@ with tf.Session() as sess:
 		# End of one test/train cycle
 
 	# End of entire run cycle
-"""
-
-train_input_fn = tf.estimator.inputs.numpy_input_fn(
-	x={"x": train_data},
-	y=train_labels,
-	batch_size=FLAGS.batch_size,
-	num_epochs=FLAGS.num_epochs,
-	shuffle=True)
-	
-
-test_input_fn = tf.estimator.inputs.numpy_input_fn(
-	x={"x": test_data},
-	y=test_labels,
-	batch_size=FLAGS.batch_size,
-	num_epochs=1,
-	shuffle=True)
-	
-
-def main(argv):
-	face_classifier = tf.estimator.Estimator(model_fn=model, model_dir="./checkpoints")
-
-	# Log the values in the "Softmax" tensor with label "probabilities"
-	tensors_to_log = {"probabilities": "softmax_tensor"}
-	logging_hook = tf.train.LoggingTensorHook(
-		tensors=tensors_to_log, every_n_iter=1000)
-
-	face_classifier.train(
-		input_fn=train_input_fn,
-		steps=FLAGS.num_runs,
-		hooks=[logging_hook])
-
-	eval_res = face_classifier.evaluate(input_fn=test_input_fn)
-	print(eval_res)
-
-if __name__ == "__main__":
-	tf.app.run()
-
-"""
