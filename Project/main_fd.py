@@ -152,6 +152,8 @@ with tf.Session() as sess:
 	# Initialize variables
 	tf.global_variables_initializer().run()
 
+	acc_string = ""
+
 	# Restore checkpoint
 	if FLAGS.global_step != 0:
 		print("Restoring model")
@@ -162,12 +164,15 @@ with tf.Session() as sess:
 	for epoch in range(FLAGS.global_step+1, FLAGS.global_step + 1 + FLAGS.num_epochs):
 		sess.run(train_op, feed_dict={X: train_data, Y: train_labels})
 
-		save_path = saver.save(sess, './checkpoints/model_fd', global_step=epoch)
+		save_path = saver.save(sess, './checkpoints/fd/model_fd', global_step=epoch)
 		print("Saved checkpoint: %s" % save_path)
 
-		print(epoch, np.mean(np.argmax(test_labels, axis=1) ==
-				sess.run(predict_op, feed_dict={X: test_data})))
+		run_acc = np.mean(np.argmax(test_labels, axis=1) ==
+				sess.run(predict_op, feed_dict={X: test_data}))
+		print(epoch, run_acc)
+		acc_string += "{}\n".format(run_acc)
 
 		# End of one test/train cycle
 
 	# End of entire run cycle
+	print(acc_string)

@@ -151,6 +151,8 @@ with tf.Session() as sess:
 	# Initialize variables
 	tf.global_variables_initializer().run()
 
+	acc_string = ""
+
 	# Restore checkpoint
 	if FLAGS.global_step != 0:
 		print("Restoring model")
@@ -194,8 +196,10 @@ with tf.Session() as sess:
 				break
 
 		print(run, acc/num_r)
+		acc_string += "{}\n".format(acc/num_r)
 
 
 		# End of one test/train cycle
 
 	# End of entire run cycle
+	print(acc_string)
